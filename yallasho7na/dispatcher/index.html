@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YallaSho7na — Dispatcher</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">YallaSho7na 🚐</div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-page" id="page-title">Live Map</div>
+    <div class="topbar-user">
+      <div class="topbar-avatar">AH</div>
+      <span>Ahmed Hassan</span>
+      <span style="color:var(--muted)">·</span>
+      <span style="color:var(--y);font-size:11px">Dispatcher</span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+  <div class="layout">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<script src="../shared.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
