@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YallaSho7na — Fleet & Logistics</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ========= LOGIN ========= -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-text">YallaSho7na 🚐</div>
+      <div class="logo-sub">منصة تتبع الأسطول الصغير واللوجستيات</div>
+    </div>
+
+    <label class="login-label">Sign in as</label>
+    <div class="actor-grid" id="actor-grid">
+      <div class="actor-card selected" data-actor="dispatcher" onclick="selectActor(this)">
+        <span class="actor-emoji">🗂️</span>
+        <div class="actor-name">Dispatcher</div>
+        <div class="actor-role">Distribution Center</div>
+      </div>
+      <div class="actor-card" data-actor="driver" onclick="selectActor(this)">
+        <span class="actor-emoji">🚐</span>
+        <div class="actor-name">Driver</div>
+        <div class="actor-role">Driver Interface</div>
+      </div>
+      <div class="actor-card" data-actor="customer" onclick="selectActor(this)">
+        <span class="actor-emoji">📦</span>
+        <div class="actor-name">Customer</div>
+        <div class="actor-role">Order Tracking</div>
+      </div>
+      <div class="actor-card" data-actor="mechanic" onclick="selectActor(this)">
+        <span class="actor-emoji">🔧</span>
+        <div class="actor-name">Mechanic</div>
+        <div class="actor-role">Fleet Maintenance</div>
+      </div>
+    </div>
+
+    <label class="login-label">Username</label>
+    <input class="login-input" id="login-username" value="ahmed.dispatcher" placeholder="Enter username">
+
+    <label class="login-label">Password</label>
+    <input class="login-input" type="password" value="••••••••" placeholder="Password">
+
+    <button class="btn-login" onclick="doLogin()">يلا نبدأ — Login</button>
+    <div class="demo-hint">Demo accounts: ahmed.dispatcher · sami.driver · sara.customer · ali.mechanic</div>
+  </div>
+</div>
+
+<!-- ========= APP ========= -->
+<div id="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">YallaSho7na 🚐</div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-page" id="page-title">Dashboard</div>
+    <div class="topbar-user" id="topbar-user">
+      <div class="topbar-avatar" id="user-initials">AH</div>
+      <span id="user-display">Ahmed Hassan</span>
+      <span style="color:var(--muted)">·</span>
+      <span id="user-role-display" style="color:var(--y);font-size:11px">Dispatcher</span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar"></div>
+
+    <!-- Content -->
+    <div class="content" id="content"></div>
+
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const actors = {
+  dispatcher: {
+    name: 'Ahmed Hassan',
+    initials: 'AH',
+    role: 'Dispatcher',
+    username: 'ahmed.dispatcher',
+    nav: [
+      { icon: '🗺️', label: 'Live Map', view: 'map' },
+      { icon: '🛣️', label: 'Routes', view: 'routes', badge: '3', badgeY: true },
+      { icon: '🚐', label: 'Vehicles', view: 'vehicles' },
+      { icon: '👤', label: 'Drivers', view: 'drivers' },
+      { icon: '⚠️', label: 'Alerts', view: 'disp-alerts', badge: '2' },
+    ]
+  },
+  driver: {
+    name: 'Sami Hassan',
+    initials: 'SH',
+    role: 'Driver',
+    username: 'sami.driver',
+    nav: [
+      { icon: '📋', label: 'My Route', view: 'my-route' },
+      { icon: '✅', label: 'Deliver', view: 'deliver' },
+      { icon: '🔍', label: 'Pre-Trip Check', view: 'pretrip' },
+      { icon: '💰', label: 'COD Ledger', view: 'cod' },
+      { icon: '🆘', label: 'Incident', view: 'incident' },
+    ]
+  },
+  customer: {
+    name: 'Sara Mahmoud',
+    initials: 'SM',
+    role: 'Customer',
+    username: 'sara.customer',
+    nav: [
+      { icon: '📦', label: 'Track Order', view: 'track-order' },
+      { icon: '📋', label: 'My Orders', view: 'my-orders' },
+      { icon: '⭐', label: 'Rate Delivery', view: 'rate' },
+    ]
+  },
+  mechanic: {
+    name: 'Ali Fathy',
+    initials: 'AF',
+    role: 'Mechanic',
+    username: 'ali.mechanic',
+    nav: [
+      { icon: '🔔', label: 'Service Alerts', view: 'service-alerts' },
+      { icon: '🚗', label: 'Fleet Status', view: 'fleet-status' },
+      { icon: '🛢️', label: 'Fuel & Parts', view: 'fuel-parts' },
+      { icon: '📝', label: 'Work Orders', view: 'work-orders' },
+    ]
+  }
+};
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let currentActor = 'dispatcher';
+let currentView = '';
+
+function selectActor(el) {
+  document.querySelectorAll('.actor-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  currentActor = el.dataset.actor;
+  const map = { dispatcher: 'ahmed.dispatcher', driver: 'sami.driver', customer: 'sara.customer', mechanic: 'ali.mechanic' };
+  document.getElementById('login-username').value = map[currentActor];
+}
+
+function doLogin() {
+  document.getElementById('login-screen').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  app.style.flexDirection = 'column';
+  const a = actors[currentActor];
+  document.getElementById('user-initials').textContent = a.initials;
+  document.getElementById('user-display').textContent = a.name;
+  document.getElementById('user-role-display').textContent = a.role;
+  buildSidebar();
+  loadView(actors[currentActor].nav[0].view);
+}
+
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function buildSidebar() {
+  const nav = actors[currentActor].nav;
+  let html = '';
+  nav.forEach(item => {
+    html += `<div class="nav-item" data-view="${item.view}" onclick="loadView('${item.view}')">
+      <span class="nav-icon">${item.icon}</span>
+      ${item.label}
+      ${item.badge ? `<span class="nav-badge ${item.badgeY ? 'y' : ''}">${item.badge}</span>` : ''}
+    </div>`;
+  });
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+function loadView(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.view === view);
+  });
+  const navItem = actors[currentActor].nav.find(n => n.view === view);
+  if (navItem) document.getElementById('page-title').textContent = navItem.label;
+  document.getElementById('content').innerHTML = views[view] ? views[view]() : '<p style="color:var(--muted)">Coming soon.</p>';
+  attachChecks();
+}
+
+// ─── VIEWS ──────────────────────────────────────────────────────────────────
+const views = {
+
+// ════ DISPATCHER ════════════════════════════════════════════════════════════
+
+'map': () => `
+<div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+  <div class="kpi"><div class="kpi-label">Active Vehicles</div><div class="kpi-val">14</div><div class="kpi-sub">3 idle · 1 repair</div></div>
+  <div class="kpi"><div class="kpi-label">Deliveries Today</div><div class="kpi-val">127</div><div class="kpi-sub">94% completion</div></div>
+  <div class="kpi"><div class="kpi-label">ETA Variance</div><div class="kpi-val" style="color:var(--warn)">+4.2m</div><div class="kpi-sub">3 windows breached</div></div>
+  <div class="kpi"><div class="kpi-label">COD Collected</div><div class="kpi-val">ج.م 3,840</div><div class="kpi-sub">ج.م 1,240 pending</div></div>
+</div>
+
+<div class="two-col">
+  <div>
+    <div class="card">
+      <div class="card-head">🗺️ Live Fleet Map — Cairo Metro <span style="color:var(--success);font-size:11px"><span class="live-dot"></span> Live</span></div>
+      <div class="map-mock">
+        <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 560 200">
+          <path d="M0,100 L560,100" stroke="rgba(245,196,0,0.08)" stroke-width="8" fill="none"/>
+          <path d="M280,0 L280,200" stroke="rgba(245,196,0,0.08)" stroke-width="8" fill="none"/>
+          <path d="M0,60 Q140,50 280,100 Q420,150 560,140" stroke="rgba(245,196,0,0.05)" stroke-width="5" fill="none"/>
+          <path d="M100,0 L170,200" stroke="rgba(245,196,0,0.04)" stroke-width="4" fill="none"/>
+          <!-- Route V-03 -->
+          <path d="M160,80 Q210,95 250,100 Q310,108 370,100" stroke="rgba(245,196,0,0.4)" stroke-width="1.5" fill="none" stroke-dasharray="4 3"/>
+          <!-- V-01 active pulsing -->
+          <g>
+            <circle cx="250" cy="100" r="13" fill="rgba(245,196,0,0.8)" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+            <circle cx="250" cy="100" r="13" fill="none" stroke="rgba(245,196,0,0.4)" stroke-width="1">
+              <animate attributeName="r" from="13" to="22" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <text x="250" y="104" text-anchor="middle" fill="#0e0e0e" font-size="8" font-family="Cairo,sans-serif" font-weight="700">V01</text>
+          </g>
+          <g>
+            <circle cx="370" cy="100" r="11" fill="rgba(245,196,0,0.7)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="370" y="104" text-anchor="middle" fill="#0e0e0e" font-size="8" font-family="Cairo,sans-serif" font-weight="700">V03</text>
+          </g>
+          <g>
+            <circle cx="130" cy="145" r="11" fill="rgba(245,196,0,0.7)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="130" y="149" text-anchor="middle" fill="#0e0e0e" font-size="8" font-family="Cairo,sans-serif" font-weight="700">V05</text>
+          </g>
+          <g>
+            <circle cx="440" cy="70" r="11" fill="rgba(245,158,11,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="440" y="74" text-anchor="middle" fill="#fff" font-size="8" font-family="Cairo,sans-serif">V07</text>
+          </g>
+          <g>
+            <circle cx="80" cy="55" r="11" fill="rgba(239,68,68,0.7)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="80" y="59" text-anchor="middle" fill="#fff" font-size="8" font-family="Cairo,sans-serif">V02</text>
+          </g>
+          <text x="275" y="40" fill="rgba(245,196,0,0.2)" font-size="9" font-family="Cairo,sans-serif" text-anchor="middle">MAADI</text>
+          <text x="440" y="40" fill="rgba(245,196,0,0.2)" font-size="9" font-family="Cairo,sans-serif" text-anchor="middle">NASR CITY</text>
+          <text x="90" y="175" fill="rgba(245,196,0,0.2)" font-size="9" font-family="Cairo,sans-serif" text-anchor="middle">GIZA</text>
+          <!-- Legend -->
+          <circle cx="10" cy="185" r="5" fill="rgba(245,196,0,0.8)"/>
+          <text x="20" y="189" fill="rgba(255,255,255,0.4)" font-size="8" font-family="Cairo,sans-serif">Active</text>
+          <circle cx="65" cy="185" r="5" fill="rgba(245,158,11,0.6)"/>
+          <text x="75" y="189" fill="rgba(255,255,255,0.4)" font-size="8" font-family="Cairo,sans-serif">Idle</text>
+          <circle cx="110" cy="185" r="5" fill="rgba(239,68,68,0.7)"/>
+          <text x="120" y="189" fill="rgba(255,255,255,0.4)" font-size="8" font-family="Cairo,sans-serif">Repair</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">🚨 Recent Events</div>
+      <div class="card-body">
+        <div class="alert-item alert-r"><div class="alert-dot ad-r"></div><span>V-02 breakdown — Sami's 5 stops redistributed to Khaled & Mohamed</span></div>
+        <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><span>ORD-2853 ETA breached — customer at Heliopolis notified automatically</span></div>
+        <div class="alert-item alert-g"><div class="alert-dot ad-g"></div><span>Emergency insertion ORD-2867 completed — ETAs recalculated downstream</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head">🚐 Fleet Status</div>
+      <div class="card-body" style="padding:0">
+        <div class="row-item" style="padding:10px 16px">
+          <span style="font-size:16px">🚐</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">V-01 · Toyota Van</div><div style="font-size:11px;color:var(--muted)">Sami · Maadi · 7 stops left</div></div>
+          <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill g" style="width:64%"></div></div><div class="prog-text">64% load</div></div>
+          <span class="pill pill-active">On Route</span>
+        </div>
+        <div class="row-item" style="padding:10px 16px">
+          <span style="font-size:16px">🚐</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">V-03 · Ford Van</div><div style="font-size:11px;color:var(--muted)">Khaled · Nasr City · 3 stops</div></div>
+          <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:45%"></div></div><div class="prog-text">45% load</div></div>
+          <span class="pill pill-active">On Route</span>
+        </div>
+        <div class="row-item" style="padding:10px 16px">
+          <span style="font-size:16px">🚛</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">V-05 · Isuzu Truck</div><div style="font-size:11px;color:var(--muted)">Mohamed · Giza · 11 stops</div></div>
+          <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill r" style="width:82%"></div></div><div class="prog-text">82% load</div></div>
+          <span class="pill pill-active">On Route</span>
+        </div>
+        <div class="row-item" style="padding:10px 16px">
+          <span style="font-size:16px">🚐</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">V-07 · Toyota Van</div><div style="font-size:11px;color:var(--muted)">Depot — awaiting dispatch</div></div>
+          <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-text">empty</div></div>
+          <span class="pill pill-idle">Idle</span>
+        </div>
+        <div class="row-item" style="padding:10px 16px">
+          <span style="font-size:16px">🚛</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">V-02 · Isuzu Truck</div><div style="font-size:11px;color:var(--muted)">Transmission failure · Workshop</div></div>
+          <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill r" style="width:100%"></div></div><div class="prog-text">in repair</div></div>
+          <span class="pill pill-danger">Repair</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">📊 Driver Scores</div>
+      <div class="card-body">
+        ${['Khaled Omar:94','Mohamed Ali:88','Sami Hassan:76','Tarek Mansour:71'].map(d => {
+          const [n,s] = d.split(':');
+          const col = s>=85?'g':s>=75?'':'r';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+            <div style="width:26px;height:26px;border-radius:50%;background:rgba(245,196,0,0.12);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--y);font-weight:700">${n.split(' ').map(x=>x[0]).join('')}</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:500">${n}</div>
+              <div class="prog-bar" style="margin-top:4px;height:4px"><div class="prog-fill ${col}" style="width:${s}%"></div></div>
+            </div>
+            <div style="font-family:monospace;font-size:12px;color:var(--y)">${s}/100</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>
+</div>
+`,
+
+'routes': () => `
+<div class="section-title">Active Routes — Route Priority Balancer</div>
+<div class="three-col">
+  ${[
+    {id:'V-01',driver:'Sami Hassan',stops:12,done:5,km:38,eta:'16:30',priority:'🔴 HIGH'},
+    {id:'V-03',driver:'Khaled Omar',stops:8,done:5,km:22,eta:'15:45',priority:'🟡 MED'},
+    {id:'V-05',driver:'Mohamed Ali',stops:15,done:4,km:51,eta:'17:10',priority:'🟢 STD'},
+  ].map(r => `
+  <div class="card">
+    <div class="card-head">${r.id} · ${r.driver} <span class="pill pill-active">Active</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Priority: <strong style="color:var(--txt)">${r.priority}</strong></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Stops Done</div><div class="kpi-val" style="font-size:18px">${r.done}/${r.stops}</div></div>
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Distance</div><div class="kpi-val" style="font-size:18px">${r.km}km</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px">
+        <span style="color:var(--muted)">ETA completion</span>
+        <span style="color:var(--y);font-weight:600">${r.eta}</span>
+      </div>
+      <div class="prog-bar" style="height:6px"><div class="prog-fill g" style="width:${Math.round(r.done/r.stops*100)}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${Math.round(r.done/r.stops*100)}% complete</div>
+    </div>
+  </div>`).join('')}
+</div>
+
+<div class="card" style="margin-top:14px">
+  <div class="card-head">🛣️ Geospatial Clustering — Cairo Zones</div>
+  <div class="card-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    <div style="padding:14px;background:var(--blk3);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Zone: Maadi</div>
+      <div style="font-size:18px;font-weight:700;color:var(--y)">15 stops</div>
+      <div style="font-size:11px;color:var(--muted)">Assigned → V-01 Toyota Van</div>
+    </div>
+    <div style="padding:14px;background:var(--blk3);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Zone: Nasr City</div>
+      <div style="font-size:18px;font-weight:700;color:var(--y)">12 stops</div>
+      <div style="font-size:11px;color:var(--muted)">Assigned → V-03 Ford Van</div>
+    </div>
+    <div style="padding:14px;background:var(--blk3);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Zone: Giza</div>
+      <div style="font-size:18px;font-weight:700;color:var(--y)">18 stops</div>
+      <div style="font-size:11px;color:var(--muted)">Assigned → V-05 Isuzu Truck</div>
+    </div>
+  </div>
+</div>
+`,
+
+'vehicles': () => `
+<div class="section-title">Vehicle Management</div>
+<div class="card">
+  <div class="card-head">All Vehicles <button class="btn btn-y" style="font-size:11px;padding:5px 12px">+ Add Vehicle</button></div>
+  <div class="card-body" style="padding:0">
+    ${[
+      {id:'V-01',model:'Toyota Van',driver:'Sami Hassan',km:48200,cap:1000,load:640,status:'active',ins:'Nov 2026'},
+      {id:'V-02',model:'Isuzu Truck',driver:'Unassigned',km:61000,cap:3000,load:0,status:'repair',ins:'Mar 2026'},
+      {id:'V-03',model:'Ford Van',driver:'Khaled Omar',km:33500,cap:1000,load:450,status:'active',ins:'Dec 2026'},
+      {id:'V-05',model:'Isuzu Truck',driver:'Mohamed Ali',km:55000,cap:3000,load:2460,status:'active',ins:'Jun 2026'},
+      {id:'V-07',model:'Toyota Van',driver:'Unassigned',km:22100,cap:1000,load:0,status:'idle',ins:'Apr 2026'},
+    ].map(v => `
+    <div class="row-item" style="padding:12px 16px">
+      <div style="font-family:monospace;font-size:12px;color:var(--y);width:40px">${v.id}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600">${v.model}</div>
+        <div style="font-size:11px;color:var(--muted)">Driver: ${v.driver} · ${v.km.toLocaleString()} km · Insurance: ${v.ins}</div>
+      </div>
+      <div style="text-align:right;margin-right:12px">
+        <div style="font-size:11px;color:var(--muted)">Load</div>
+        <div style="font-size:12px;font-weight:600">${v.load}/${v.cap} kg</div>
+      </div>
+      <span class="pill ${v.status==='active'?'pill-active':v.status==='idle'?'pill-idle':'pill-danger'}">${v.status}</span>
+    </div>`).join('')}
+  </div>
+</div>
+`,
+
+'drivers': () => `
+<div class="section-title">Driver Management</div>
+<div class="two-col">
+  ${[
+    {n:'Sami Hassan',init:'SH',role:'Van driver',score:76,trips:1240,rating:4.2,shift:'Morning',lic:'Van · Small Truck'},
+    {n:'Khaled Omar',init:'KO',role:'Van driver',score:94,trips:1890,rating:4.8,shift:'Morning',lic:'Van'},
+    {n:'Mohamed Ali',init:'MA',role:'Truck driver',score:88,trips:2100,rating:4.6,shift:'Morning',lic:'Van · Heavy Truck'},
+    {n:'Tarek Mansour',init:'TM',role:'Van driver',score:71,trips:760,rating:3.9,shift:'Evening',lic:'Van'},
+  ].map(d => `
+  <div class="card">
+    <div class="card-head" style="gap:10px">
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(245,196,0,0.15);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--y)">${d.init}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${d.n}</div><div style="font-size:11px;color:var(--muted)">${d.role} · ${d.shift} shift</div></div>
+      <span class="pill pill-active">Active</span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Score</div><div class="kpi-val" style="font-size:18px;color:${d.score>=85?'var(--success)':d.score>=75?'var(--y)':'var(--danger)'}">${d.score}</div></div>
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Trips</div><div class="kpi-val" style="font-size:18px">${d.trips}</div></div>
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Rating</div><div class="kpi-val" style="font-size:18px">${d.rating}⭐</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Licenses: <span style="color:var(--txt)">${d.lic}</span></div>
+    </div>
+  </div>`).join('')}
+</div>
+`,
+
+'disp-alerts': () => `
+<div class="section-title">Active Alerts</div>
+<div class="card">
+  <div class="card-body">
+    <div class="alert-item alert-r"><div class="alert-dot ad-r"></div><div style="flex:1"><strong>V-02 — Breakdown</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Transmission failure. 5 stops redistributed to Khaled & Mohamed. Tow requested.</div></div><span style="font-size:10px;color:var(--muted)">Now</span></div>
+    <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><div style="flex:1"><strong>ORD-2853 — Window Breached</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Customer at Heliopolis promised 2–4pm. New ETA 4:30pm. Sender notified.</div></div><span style="font-size:10px;color:var(--muted)">14:30</span></div>
+    <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><div style="flex:1"><strong>V-05 — High Load Warning</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">V-05 at 82% capacity (2460/3000 kg). New 200 kg order → rejected.</div></div><span style="font-size:10px;color:var(--muted)">13:55</span></div>
+    <div class="alert-item alert-g"><div class="alert-dot ad-g"></div><div style="flex:1"><strong>ORD-2831 — RTB Initiated</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Customer absent after 3 attempts. Package returning to depot. Report generated.</div></div><span style="font-size:10px;color:var(--muted)">13:10</span></div>
+  </div>
+</div>
+`,
+
+// ════ DRIVER ════════════════════════════════════════════════════════════════
+
+'my-route': () => `
+<div class="section-title">My Route Today — V-01 Toyota Van</div>
+<div class="two-col">
+  <div>
+    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><div class="kpi-label">Stops</div><div class="kpi-val">12</div><div class="kpi-sub">5 done · 7 left</div></div>
+      <div class="kpi"><div class="kpi-label">Distance</div><div class="kpi-val">38km</div><div class="kpi-sub">22km remaining</div></div>
+      <div class="kpi"><div class="kpi-label">ETA End</div><div class="kpi-val">16:30</div><div class="kpi-sub">On schedule</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">📍 Stop Sequence</div>
+      <div class="card-body" style="padding-top:8px">
+        <div class="stop-line">
+          ${[
+            {n:'Depot Load',d:'QR verified · 640kg · 08:15',s:'done'},
+            {n:'Stop 1 — Al-Azhar St',d:'Delivered · Signed · COD ج.م 240',s:'done'},
+            {n:'Stop 2 — Nasr City Mall',d:'Delivered · Photo proof · VIP',s:'done'},
+            {n:'Stop 3 — Abbassiya',d:'Delivered · Standard parcel',s:'done'},
+            {n:'Stop 4 — Heliopolis Ave',d:'Perishable · VIP · ⚠ ETA late',s:'cur'},
+            {n:'Stop 5 — Rehab City',d:'Standard · ETA ~15:30',s:'next'},
+            {n:'Stop 6 — Heliopolis Mall',d:'2 parcels · ETA ~16:00',s:'next'},
+          ].map(s => `
+          <div class="stop-row">
+            <div class="stop-dot ${s.s}">${s.s==='done'?'✓':s.s==='cur'?'●':'○'}</div>
+            <div class="stop-connector"></div>
+            <div class="stop-info">
+              <div class="stop-name">${s.n}</div>
+              <div class="stop-detail">${s.d}</div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head">⚡ Dynamic Rerouting</div>
+      <div class="card-body">
+        <div class="alert-item alert-r" style="margin-bottom:10px"><div class="alert-dot ad-r"></div>V-02 breakdown — 5 stops added to your route</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">New stops inserted after current position. ETAs recalculated.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-y" style="flex:1">Accept Reroute</button>
+          <button class="btn btn-ghost" style="flex:1">Call Dispatcher</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">🕐 Break Manager</div>
+      <div class="card-body">
+        <div class="kpi" style="margin-bottom:10px"><div class="kpi-label">Driving Time</div><div class="kpi-val">3h 20m</div><div class="kpi-sub">Break required after 40 min</div></div>
+        <div class="prog-bar" style="height:8px;margin-bottom:8px"><div class="prog-fill r" style="width:83%"></div></div>
+        <div style="font-size:11px;color:var(--warn)">⚠ Mandatory 30-min break due at 4h mark (Labour Law)</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">💨 Speed Advisor</div>
+      <div class="card-body">
+        <div class="kpi"><div class="kpi-label">Recommended Speed</div><div class="kpi-val">80 km/h</div><div class="kpi-sub">V-01 at 64% load — optimal for fuel economy</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+`,
+
+'deliver': () => `
+<div class="section-title">Deliver — Stop 4: Heliopolis Ave</div>
+<div class="two-col">
+  <div>
+    <div class="card">
+      <div class="card-head">📦 Order Details</div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <div class="kpi" style="padding:10px"><div class="kpi-label">Order ID</div><div class="kpi-val" style="font-size:14px;font-family:monospace">ORD-2853</div></div>
+          <div class="kpi" style="padding:10px"><div class="kpi-label">Type</div><div class="kpi-val" style="font-size:14px">🥩 Perishable</div></div>
+          <div class="kpi" style="padding:10px"><div class="kpi-label">Customer</div><div class="kpi-val" style="font-size:14px">Sara M.</div></div>
+          <div class="kpi" style="padding:10px"><div class="kpi-label">COD Amount</div><div class="kpi-val" style="font-size:14px;color:var(--success)">ج.م 320</div></div>
+        </div>
+        <div class="alert-item alert-y"><div class="alert-dot ad-y"></div>VIP + Perishable — handle with care, deliver immediately</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">🔍 QR Code Verification</div>
+      <div class="card-body" style="text-align:center">
+        <div style="width:80px;height:80px;background:var(--blk3);border:2px dashed var(--border2);border-radius:8px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px">📷</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Scan parcel QR code to verify before confirming delivery</div>
+        <button class="btn btn-y" style="width:100%">📷 Scan QR Code</button>
+        <div style="margin-top:8px;font-size:11px;color:var(--success)">✅ QR Match: ORD-2853 verified</div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head">✍️ Digital Signature</div>
+      <div class="card-body">
+        <div style="width:100%;height:100px;background:var(--blk3);border:1px dashed var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);margin-bottom:10px">Customer signs here</div>
+        <button class="btn btn-ghost" style="width:100%;margin-bottom:8px">Clear Signature</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">📸 Photo Evidence</div>
+      <div class="card-body">
+        <div style="width:100%;height:90px;background:var(--blk3);border:1px dashed var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:10px;cursor:pointer">📷</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Photo will be GPS-tagged and timestamped automatically</div>
+        <button class="btn btn-y" style="width:100%">✅ Confirm Delivery</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">📡 Offline Queue</div>
+      <div class="card-body">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Poor signal? Deliveries saved locally and synced when back online.</div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="live-dot" style="background:var(--success)"></div><span style="font-size:12px">Signal OK — 0 pending sync</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+`,
+
+'pretrip': () => `
+<div class="section-title">Pre-Trip Safety Inspection — V-01</div>
+<div class="two-col">
+  <div class="card">
+    <div class="card-head">✅ Safety Checklist</div>
+    <div class="card-body" style="padding-top:8px">
+      ${[
+        'Tires — pressure and condition',
+        'Brakes — test in depot yard',
+        'Headlights and indicators',
+        'Engine oil level',
+        'Coolant level',
+        'Windshield — clean, no cracks',
+        'Seatbelt functional',
+        'Fire extinguisher on board',
+        'Load secured — no shift',
+        'QR scanner charged',
+      ].map((item,i) => `
+      <div class="check-row">
+        <div class="check-box ${i<7?'checked':''}" onclick="this.classList.toggle('checked')">✓</div>
+        <span>${item}</span>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head">📊 Inspection Status</div>
+      <div class="card-body">
+        <div class="kpi" style="margin-bottom:10px"><div class="kpi-label">Items Checked</div><div class="kpi-val">7 / 10</div><div class="kpi-sub">Complete all to unlock route start</div></div>
+        <div class="prog-bar" style="height:8px;margin-bottom:14px"><div class="prog-fill" style="width:70%"></div></div>
+        <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;cursor:not-allowed;opacity:0.5">🔒 Start Route (Complete checklist first)</button>
+        <div style="font-size:11px;color:var(--muted)">Checklist submitted and timestamped to your shift record.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">🆘 Report Incident</div>
+      <div class="card-body">
+        <select style="width:100%;padding:9px;background:var(--blk3);border:1px solid var(--border);border-radius:7px;color:var(--txt);margin-bottom:10px;font-family:var(--body)">
+          <option>Select incident type</option>
+          <option>Minor accident</option>
+          <option>Vehicle breakdown</option>
+          <option>Flat tire</option>
+          <option>Other</option>
+        </select>
+        <button class="btn btn-y" style="width:100%">🆘 Submit Incident Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+`,
+
+'cod': () => `
+<div class="section-title">Cash on Delivery Ledger</div>
+<div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi"><div class="kpi-label">Total Collected</div><div class="kpi-val">ج.م 1,280</div><div class="kpi-sub">From 5 stops today</div></div>
+  <div class="kpi"><div class="kpi-label">Pending Stops</div><div class="kpi-val" style="color:var(--warn)">7</div><div class="kpi-sub">Estimated ج.م 890 remaining</div></div>
+  <div class="kpi"><div class="kpi-label">Shift Handover</div><div class="kpi-val">18:00</div><div class="kpi-sub">Return to depot with receipts</div></div>
+</div>
+<div class="card">
+  <div class="card-head">💰 COD Log</div>
+  <div class="card-body" style="padding:0">
+    ${[
+      {ord:'ORD-2820',addr:'Al-Rehab',amt:240,status:'collected'},
+      {ord:'ORD-2831',addr:'Giza District',amt:180,status:'failed-rtb'},
+      {ord:'ORD-2839',addr:'Nasr City Mall',amt:480,status:'collected'},
+      {ord:'ORD-2847',addr:'Maadi',amt:320,status:'collected'},
+      {ord:'ORD-2853',addr:'Heliopolis',amt:320,status:'pending'},
+    ].map(c => `
+    <div class="row-item" style="padding:10px 16px">
+      <div style="font-family:monospace;font-size:11px;color:var(--muted)">${c.ord}</div>
+      <div style="flex:1;font-size:12px;padding:0 12px">${c.addr}</div>
+      <div style="font-weight:600;font-size:13px;color:${c.status==='collected'?'var(--success)':c.status==='pending'?'var(--y)':'var(--danger)'}">ج.م ${c.amt}</div>
+      <span class="pill ${c.status==='collected'?'pill-active':c.status==='pending'?'pill-idle':'pill-danger'}" style="margin-left:8px">${c.status}</span>
+    </div>`).join('')}
+  </div>
+</div>
+`,
+
+'incident': () => `
+<div class="section-title">Incident Reporting</div>
+<div class="two-col">
+  <div class="card">
+    <div class="card-head">🆘 New Incident Report</div>
+    <div class="card-body">
+      <label class="login-label" style="font-size:11px">Incident Type</label>
+      <select style="width:100%;padding:10px;background:var(--blk3);border:1px solid var(--border);border-radius:7px;color:var(--txt);margin-bottom:14px;font-family:var(--body)">
+        <option>Minor accident</option>
+        <option>Vehicle breakdown</option>
+        <option>Flat tire</option>
+        <option>Load damage</option>
+        <option>Customer complaint</option>
+      </select>
+      <label class="login-label" style="font-size:11px">Description</label>
+      <textarea style="width:100%;height:80px;padding:10px;background:var(--blk3);border:1px solid var(--border);border-radius:7px;color:var(--txt);margin-bottom:14px;font-family:var(--body);resize:none" placeholder="Describe what happened..."></textarea>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-ghost" style="flex:1">📷 Add Photo</button>
+        <button class="btn btn-ghost" style="flex:1">📍 Use GPS Location</button>
+      </div>
+      <button class="btn btn-y" style="width:100%">Submit Incident & Request Help</button>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head">📋 Past Incidents</div>
+      <div class="card-body">
+        <div class="alert-item alert-g"><div class="alert-dot ad-g"></div><div><strong>Flat tire — Apr 12</strong><div style="font-size:11px;color:var(--muted)">Resolved in 45 min · Tow dispatched</div></div></div>
+        <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><div><strong>Minor scratch — Mar 28</strong><div style="font-size:11px;color:var(--muted)">Customer parking · Photo documented</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">🆘 Emergency Contacts</div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-y" style="width:100%">📞 Call Dispatcher</button>
+          <button class="btn btn-ghost" style="width:100%">🔧 Request Roadside Help</button>
+          <button class="btn btn-ghost" style="width:100%;border-color:var(--danger);color:var(--danger)">🚨 Emergency Services</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`,
+
+// ════ CUSTOMER ═══════════════════════════════════════════════════════════════
+
+'track-order': () => `
+<div class="section-title">Track Your Order</div>
+<div class="card" style="max-width:600px;margin:0 auto">
+  <div class="card-head">📦 ORD-2853 — Heliopolis Ave</div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <div class="kpi" style="padding:10px"><div class="kpi-label">Order</div><div class="kpi-val" style="font-size:14px;font-family:monospace">ORD-2853</div></div>
+      <div class="kpi" style="padding:10px"><div class="kpi-label">ETA</div><div class="kpi-val" style="font-size:14px;color:var(--warn)">~14:48</div></div>
+    </div>
+
+    <div class="alert-item alert-y" style="margin-bottom:16px"><div class="alert-dot ad-y"></div>Your driver is 500m away — get ready! 🚐</div>
+
+    <!-- Tracking bar -->
+    <div class="track-bar">
+      <div class="track-step done">
+        <div class="track-dot"></div>
+        <div class="track-label">Order Placed</div>
+      </div>
+      <div class="track-step done">
+        <div class="track-dot"></div>
+        <div class="track-label">Dispatched</div>
+      </div>
+      <div class="track-step cur">
+        <div class="track-dot"></div>
+        <div class="track-label">On the Way</div>
+      </div>
+      <div class="track-step">
+        <div class="track-dot"></div>
+        <div class="track-label">Delivered</div>
+      </div>
+    </div>
+
+    <div class="map-mock" style="height:140px;border-radius:8px;margin:14px 0">
+      <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 520 140">
+        <path d="M0,70 L520,70" stroke="rgba(245,196,0,0.07)" stroke-width="6" fill="none"/>
+        <path d="M260,0 L260,140" stroke="rgba(245,196,0,0.07)" stroke-width="6" fill="none"/>
+        <path d="M100,60 Q180,55 240,70 Q300,85 360,75" stroke="rgba(245,196,0,0.4)" stroke-width="1.5" fill="none" stroke-dasharray="4 3"/>
+        <!-- Driver -->
+        <g>
+          <circle cx="240" cy="70" r="12" fill="rgba(245,196,0,0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+          <circle cx="240" cy="70" r="12" fill="none" stroke="rgba(245,196,0,0.4)"><animate attributeName="r" from="12" to="20" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite"/></circle>
+          <text x="240" y="74" text-anchor="middle" fill="#0e0e0e" font-size="8" font-family="Cairo,sans-serif" font-weight="700">🚐</text>
+        </g>
+        <!-- Destination -->
+        <rect x="346" y="60" width="40" height="18" rx="4" fill="rgba(34,197,94,0.2)" stroke="rgba(34,197,94,0.5)" stroke-width="0.5"/>
+        <text x="366" y="73" text-anchor="middle" fill="#22c55e" font-size="8" font-family="Cairo,sans-serif">YOU 📍</text>
+        <text x="240" y="50" text-anchor="middle" fill="rgba(245,196,0,0.6)" font-size="9" font-family="Cairo,sans-serif">Sami · V-01 · 500m</text>
+      </svg>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+      <span style="color:var(--muted)">Driver: <strong style="color:var(--txt)">Sami Hassan</strong></span>
+      <span style="color:var(--muted)">Vehicle: <strong style="color:var(--txt)">V-01 · Toyota Van</strong></span>
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px">📞 Call Driver</button>
+    </div>
+  </div>
+</div>
+`,
+
+'my-orders': () => `
+<div class="section-title">My Orders</div>
+<div class="card">
+  <div class="card-body" style="padding:0">
+    ${[
+      {id:'ORD-2853',item:'Meat box (perishable)',date:'Today',status:'on-the-way',amount:'ج.م 320'},
+      {id:'ORD-2839',item:'Electronics package',date:'Today',status:'delivered',amount:'ج.م 480'},
+      {id:'ORD-2820',item:'Grocery bundle',date:'Today',status:'delivered',amount:'ج.م 240'},
+      {id:'ORD-2780',item:'Books order',date:'Yesterday',status:'delivered',amount:'ج.م 180'},
+      {id:'ORD-2760',item:'Household items',date:'May 6',status:'delivered',amount:'ج.م 350'},
+    ].map(o => `
+    <div class="row-item" style="padding:12px 16px">
+      <span style="font-size:18px">${o.status==='delivered'?'📦':'🚐'}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600">${o.id} — ${o.item}</div>
+        <div style="font-size:11px;color:var(--muted)">${o.date} · ${o.amount}</div>
+      </div>
+      <span class="pill ${o.status==='delivered'?'pill-active':'pill-blue'}">${o.status==='delivered'?'Delivered':'On the way'}</span>
+    </div>`).join('')}
+  </div>
+</div>
+`,
+
+'rate': () => `
+<div class="section-title">Rate Your Delivery</div>
+<div class="card" style="max-width:500px">
+  <div class="card-head">⭐ Rate ORD-2839</div>
+  <div class="card-body" style="text-align:center">
+    <div style="font-size:36px;margin:16px 0">⭐⭐⭐⭐⭐</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Tap to rate your delivery experience</div>
+    <textarea style="width:100%;height:70px;padding:10px;background:var(--blk3);border:1px solid var(--border);border-radius:7px;color:var(--txt);font-family:var(--body);resize:none;margin-bottom:12px" placeholder="Leave a comment (optional)..."></textarea>
+    <button class="btn btn-y" style="width:100%">Submit Rating</button>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Your feedback helps improve driver performance scoring</div>
+  </div>
+</div>
+`,
+
+// ════ MECHANIC ═══════════════════════════════════════════════════════════════
+
+'service-alerts': () => `
+<div class="section-title">Service Alerts</div>
+<div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi"><div class="kpi-label">Critical</div><div class="kpi-val" style="color:var(--danger)">1</div><div class="kpi-sub">Immediate action needed</div></div>
+  <div class="kpi"><div class="kpi-label">Due Soon</div><div class="kpi-val" style="color:var(--warn)">3</div><div class="kpi-sub">Within 1000 km</div></div>
+  <div class="kpi"><div class="kpi-label">All Good</div><div class="kpi-val" style="color:var(--success)">13</div><div class="kpi-sub">No immediate action</div></div>
+</div>
+<div class="card">
+  <div class="card-head">🔔 All Maintenance Alerts</div>
+  <div class="card-body">
+    <div class="alert-item alert-r"><div class="alert-dot ad-r"></div><div style="flex:1"><strong>V-02 — Transmission Failure</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Vehicle out of service. Assign technician or external workshop. Tow has been dispatched.</div></div><span style="font-size:10px;color:var(--danger)">CRITICAL</span></div>
+    <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><div style="flex:1"><strong>V-05 — Oil Change Due</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Odometer: 55,000 km. Service threshold: 55,000 km. Schedule today.</div></div><span style="font-size:10px;color:var(--warn)">TODAY</span></div>
+    <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><div style="flex:1"><strong>V-03 — Brake Pads</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">28,000 / 30,000 km life used. Replacement needed within 2,000 km.</div></div><span style="font-size:10px;color:var(--warn)">SOON</span></div>
+    <div class="alert-item alert-y"><div class="alert-dot ad-y"></div><div style="flex:1"><strong>V-07 — Insurance Expiry</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Insurance expires April 30. 9 days remaining. Contact insurance provider.</div></div><span style="font-size:10px;color:var(--warn)">9 DAYS</span></div>
+  </div>
+</div>
+`,
+
+'fleet-status': () => `
+<div class="section-title">Fleet Health Overview</div>
+<div class="two-col">
+  ${[
+    {id:'V-01',model:'Toyota Van',km:48200,oil:48200,oilNext:50000,insurance:'Nov 2026',status:'ok'},
+    {id:'V-02',model:'Isuzu Truck',km:61000,oil:58000,oilNext:60000,insurance:'Mar 2027',status:'repair'},
+    {id:'V-03',model:'Ford Van',km:33500,oil:30000,oilNext:35000,insurance:'Dec 2026',status:'warn'},
+    {id:'V-05',model:'Isuzu Truck',km:55000,oil:55000,oilNext:55000,insurance:'Jun 2026',status:'warn'},
+  ].map(v => `
+  <div class="card">
+    <div class="card-head">${v.id} — ${v.model} <span class="pill ${v.status==='ok'?'pill-active':v.status==='warn'?'pill-warn':'pill-danger'}">${v.status}</span></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Odometer</div><div class="kpi-val" style="font-size:14px">${v.km.toLocaleString()}</div></div>
+        <div class="kpi" style="padding:10px"><div class="kpi-label">Insurance</div><div class="kpi-val" style="font-size:14px">${v.insurance}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Oil change progress</div>
+      <div class="prog-bar" style="height:6px;margin-bottom:4px"><div class="prog-fill ${v.km>=v.oilNext?'r':''}" style="width:${Math.min(100,Math.round((v.km-v.oil+5000)/5000*100))}%"></div></div>
+      <div style="font-size:10px;color:var(--muted)">${v.km} / ${v.oilNext} km — next service</div>
+    </div>
+  </div>`).join('')}
+</div>
+`,
+
+'fuel-parts': () => `
+<div class="section-title">Fuel & Spare Parts</div>
+<div class="two-col">
+  <div>
+    <div class="card">
+      <div class="card-head">🛢️ Fuel Expense Audit</div>
+      <div class="card-body">
+        ${[
+          {v:'V-01',declared:200,actual:198,match:true},
+          {v:'V-03',declared:150,actual:148,match:true},
+          {v:'V-05',declared:200,actual:152,match:false},
+        ].map(f => `
+        <div class="row-item">
+          <span style="font-family:monospace;font-size:12px;color:var(--y)">${f.v}</span>
+          <div style="flex:1;font-size:12px;padding:0 10px">Declared: ${f.declared}km · Actual GPS: ${f.actual}km</div>
+          <span class="pill ${f.match?'pill-active':'pill-danger'}">${f.match?'✓ Match':'⚠ Gap'}</span>
+        </div>`).join('')}
+        <div class="alert-item alert-r" style="margin-top:10px"><div class="alert-dot ad-r"></div>V-05 declared 200km but GPS shows 152km — review receipt</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">📊 Fuel Efficiency Comparison</div>
+      <div class="card-body">
+        ${[
+          {m:'Toyota Van',mpk:12},{m:'Ford Van',mpk:11.5},{m:'Isuzu Truck',mpk:7.8}
+        ].map(f => `
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${f.m}</span><span style="color:var(--y)">${f.mpk} km/L</span></div>
+          <div class="prog-bar" style="height:5px"><div class="prog-fill" style="width:${Math.round(f.mpk/14*100)}%"></div></div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head">🔩 Spare Parts Inventory</div>
+      <div class="card-body">
+        ${[
+          {item:'Engine Oil 5W-30',stock:5,min:10,unit:'L'},
+          {item:'Air Filter',stock:2,min:3,unit:'pcs'},
+          {item:'Brake Pads',stock:4,min:4,unit:'sets'},
+          {item:'Tires (Van size)',stock:6,min:4,unit:'pcs'},
+          {item:'Battery',stock:1,min:2,unit:'pcs'},
+        ].map(p => `
+        <div class="row-item">
+          <div style="flex:1;font-size:12px">${p.item}</div>
+          <div style="font-size:12px;font-weight:600;color:${p.stock<p.min?'var(--danger)':'var(--success)'}">
+            ${p.stock} ${p.unit}
+          </div>
+          ${p.stock<p.min?'<span class="pill pill-danger" style="font-size:10px;margin-left:6px">Reorder</span>':''}
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+</div>
+`,
+
+'work-orders': () => `
+<div class="section-title">Work Orders</div>
+<div class="card">
+  <div class="card-head">🔧 Active Work Orders <button class="btn btn-y" style="font-size:11px;padding:5px 12px">+ New</button></div>
+  <div class="card-body" style="padding:0">
+    ${[
+      {id:'WO-041',vehicle:'V-02',task:'Transmission replacement',tech:'Internal — Ali Fathy',status:'in-progress',eta:'May 10'},
+      {id:'WO-042',vehicle:'V-05',task:'Oil change',tech:'Internal — Ali Fathy',status:'scheduled',eta:'Today 17:00'},
+      {id:'WO-043',vehicle:'V-03',task:'Brake pad replacement',tech:'External workshop',status:'scheduled',eta:'May 9'},
+    ].map(w => `
+    <div class="row-item" style="padding:12px 16px">
+      <div style="font-family:monospace;font-size:11px;color:var(--muted);width:52px">${w.id}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600">${w.vehicle} — ${w.task}</div>
+        <div style="font-size:11px;color:var(--muted)">${w.tech} · ETA: ${w.eta}</div>
+      </div>
+      <span class="pill ${w.status==='in-progress'?'pill-warn':'pill-blue'}">${w.status}</span>
+    </div>`).join('')}
+  </div>
+</div>
+`
+
+}; // end views
+
+function attachChecks() {
+  document.querySelectorAll('.check-box').forEach(box => {
+    box.onclick = () => box.classList.toggle('checked');
+  });
+}
+</script>
+</body>
+</html>

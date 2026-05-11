@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YallaSho7na — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+body {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; background: var(--blk); position: relative; overflow: hidden;
+}
+body::before {
+  content: ''; position: absolute;
+  top: -200px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(245,196,0,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.login-box {
+  width: 420px; background: var(--blk2);
+  border: 1px solid var(--border2); border-radius: 16px;
+  padding: 40px; position: relative; z-index: 1;
+}
+.login-logo { text-align: center; margin-bottom: 32px; }
+.logo-text { font-family: var(--head); font-size: 32px; font-weight: 800; color: var(--y); letter-spacing: -1px; }
+.logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; letter-spacing: 0.05em; }
+
+.actor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+.actor-card {
+  padding: 14px 12px; background: var(--blk3);
+  border: 2px solid transparent; border-radius: 10px;
+  cursor: pointer; text-align: center; transition: all 0.18s;
+}
+.actor-card:hover { border-color: var(--border2); background: var(--blk4); }
+.actor-card.selected { border-color: var(--y); background: rgba(245,196,0,0.08); }
+.actor-emoji { font-size: 24px; display: block; margin-bottom: 6px; }
+.actor-name { font-size: 13px; font-weight: 600; }
+.actor-role { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.btn-login {
+  width: 100%; padding: 13px;
+  background: var(--y); color: var(--blk);
+  border: none; border-radius: 8px;
+  font-family: var(--body); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
+}
+.btn-login:hover { background: var(--yh); }
+.demo-hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<div class="login-box">
+  <div class="login-logo">
+    <div class="logo-text">YallaSho7na 🚐</div>
+    <div class="logo-sub">منصة تتبع الأسطول الصغير واللوجستيات</div>
+  </div>
+
+  <label class="login-label">Sign in as</label>
+  <div class="actor-grid" id="actor-grid">
+    <div class="actor-card selected" data-actor="dispatcher" onclick="selectActor(this)">
+      <span class="actor-emoji">🗂️</span>
+      <div class="actor-name">Dispatcher</div>
+      <div class="actor-role">Distribution Center</div>
+    </div>
+    <div class="actor-card" data-actor="driver" onclick="selectActor(this)">
+      <span class="actor-emoji">🚐</span>
+      <div class="actor-name">Driver</div>
+      <div class="actor-role">Driver Interface</div>
+    </div>
+    <div class="actor-card" data-actor="customer" onclick="selectActor(this)">
+      <span class="actor-emoji">📦</span>
+      <div class="actor-name">Customer</div>
+      <div class="actor-role">Order Tracking</div>
+    </div>
+    <div class="actor-card" data-actor="mechanic" onclick="selectActor(this)">
+      <span class="actor-emoji">🔧</span>
+      <div class="actor-name">Mechanic</div>
+      <div class="actor-role">Fleet Maintenance</div>
+    </div>
+  </div>
+
+  <label class="login-label">Username</label>
+  <input class="login-input" id="login-username" value="ahmed.dispatcher" placeholder="Enter username">
+
+  <label class="login-label">Password</label>
+  <input class="login-input" type="password" value="••••••••" placeholder="Password">
+
+  <button class="btn-login" onclick="doLogin()">يلا نبدأ — Login</button>
+  <div class="demo-hint">Demo accounts: ahmed.dispatcher · sami.driver · sara.customer · ali.mechanic</div>
+</div>
+
+<script>
+let currentActor = 'dispatcher';
+
+function selectActor(el) {
+  document.querySelectorAll('.actor-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  currentActor = el.dataset.actor;
+  const map = {
+    dispatcher: 'ahmed.dispatcher',
+    driver: 'sami.driver',
+    customer: 'sara.customer',
+    mechanic: 'ali.mechanic'
+  };
+  document.getElementById('login-username').value = map[currentActor];
+}
+
+function doLogin() {
+  const pages = {
+    dispatcher: 'dispatcher/index.html',
+    driver: 'driver/index.html',
+    customer: 'customer/index.html',
+    mechanic: 'mechanic/index.html'
+  };
+  window.location.href = pages[currentActor];
+}
+</script>
+</body>
+</html>
